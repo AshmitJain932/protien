@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# raw data (regenerate with scripts/get_data.sh)
+data/pdbs/
+data/acdc-nn/
+data/ddgun/
+data/ThermoMPNN_Kuhlman-Lab/
+data/pdb_ids.txt
+# keep committed, verified datasets:
+!data/parsed/
+!data/parsed/*.csv
+
+# intermediate caches (regenerate with the pipeline)
+artifacts/
+*.npz
+
+# OS
+.DS_Store
