@@ -17,12 +17,15 @@ s669n = rj(config.RESULTS + "/results_s669.json", {})
 unc = rj(config.RESULTS + "/results_uncertainty_650M.json") or rj(config.RESULTS + "/results_uncertainty_150M.json", {})
 pro = rj(config.RESULTS + "/results_prospective.json", {})
 
-def our_r():
-    if final and "bio+esm+llr (FULL)" in final: return final["bio+esm+llr (FULL)"]["s669"]["pearson"], "full-data"
-    if unc and "s669_ensemble_r" in unc: return unc["s669_ensemble_r"], "ensemble"
-    return float("nan"), "?"
+struct = rj(config.RESULTS + "/results_struct.json", {})
 
-our, kind = our_r()
+def seq_r():
+    if final and "bio+esm+llr (FULL)" in final: return final["bio+esm+llr (FULL)"]["s669"]["pearson"]
+    if struct and "seq (bio+esm+llr)" in struct: return struct["seq (bio+esm+llr)"]["s669"]["pearson"]
+    return float("nan")
+
+our = seq_r()
+our_struct = struct.get("+ structure", {}).get("s669", {}).get("pearson") if struct else None
 
 # PUBLISHED S669 direct-Pearson values (approximate; from Pancotti et al. 2022 and follow-up papers).
 # type: 'seq' = sequence-only, 'struct' = needs a 3D structure. Verify against the original papers.
@@ -42,7 +45,10 @@ LIT = [
     ("ThermoMPNN",       "struct", 0.58),
 ]
 
-rows = [("This work (anti-sym, seq-only)", "seq", our, "measured")]
+rows = []
+if our_struct is not None:
+    rows.append(("This work (structure-aware)", "struct", our_struct, "measured"))
+rows.append(("This work (anti-sym, seq-only)", "seq", our, "measured"))
 if s669n: rows.append(("  └ naive (no anti-sym)", "seq", s669n["naive"]["pearson"], "measured"))
 if final and "zeroshot_LLR_only" in final:
     rows.append(("  └ ESM2 zero-shot only", "seq", final["zeroshot_LLR_only"]["s669"]["pearson"], "measured"))

@@ -16,8 +16,10 @@ MODEL = "facebook/esm2_t12_35M_UR50D"   # 480-dim, CPU-friendly
 DATA = config.DATA + "/parsed/ddg_dataset.csv"
 OUT = config.WORK + "/esm_delta.npz"
 
-def main(limit=None, batch=8, data=DATA, out=OUT):
+def main(limit=None, batch=8, data=DATA, out=OUT, model_name=MODEL):
     torch.set_num_threads(4)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device == "cuda": batch = max(batch, 32)   # GPUs like bigger batches
     df = pd.read_csv(data)
     if limit:
         df = df.iloc[:limit].reset_index(drop=True)
@@ -33,9 +35,9 @@ def main(limit=None, batch=8, data=DATA, out=OUT):
     seqs = list(need.keys())
     print(f"rows={len(df)}  unique sequences to embed={len(seqs)}", flush=True)
 
-    print("loading", MODEL, flush=True)
-    tok = AutoTokenizer.from_pretrained(MODEL)
-    model = EsmModel.from_pretrained(MODEL); model.eval()
+    print(f"loading {model_name} on {device}", flush=True)
+    tok = AutoTokenizer.from_pretrained(model_name)
+    model = EsmModel.from_pretrained(model_name).to(device); model.eval()
     D = model.config.hidden_size
 
     vec = {}  # (seq, pos) -> np.array(D)
@@ -43,8 +45,8 @@ def main(limit=None, batch=8, data=DATA, out=OUT):
     with torch.no_grad():
         for b in range(0, len(seqs), batch):
             chunk = seqs[b:b + batch]
-            enc = tok(chunk, return_tensors="pt", padding=True)
-            hs = model(**enc).last_hidden_state   # [B, L+2, D], token 0 = CLS
+            enc = tok(chunk, return_tensors="pt", padding=True).to(device)
+            hs = model(**enc).last_hidden_state.float().cpu()   # [B, L+2, D], token 0 = CLS
             for j, s in enumerate(chunk):
                 for pos in need[s]:
                     vec[(s, pos)] = hs[j, pos + 1].numpy().astype(np.float32)
@@ -65,5 +67,6 @@ if __name__ == "__main__":
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--data", default=DATA)
     ap.add_argument("--out", default=OUT)
+    ap.add_argument("--model", default=MODEL)
     a = ap.parse_args()
-    main(limit=a.limit, data=a.data, out=a.out)
+    main(limit=a.limit, data=a.data, out=a.out, model_name=a.model)

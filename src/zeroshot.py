@@ -14,10 +14,13 @@ from transformers import AutoTokenizer, EsmForMaskedLM
 
 def run(model_name, data, out, limit=None, batch=4):
     torch.set_num_threads(4)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device == "cuda": batch = max(batch, 16)
     df = pd.read_csv(data)
     if limit: df = df.iloc[:limit].reset_index(drop=True)
     tok = AutoTokenizer.from_pretrained(model_name)
-    model = EsmForMaskedLM.from_pretrained(model_name); model.eval()
+    model = EsmForMaskedLM.from_pretrained(model_name).to(device); model.eval()
+    print(f"loaded {model_name} on {device}", flush=True)
     aa_ids = {a: tok.convert_tokens_to_ids(a) for a in "ACDEFGHIKLMNPQRSTVWY"}
 
     # unique base sequences -> positions needed
@@ -33,8 +36,8 @@ def run(model_name, data, out, limit=None, batch=4):
     with torch.no_grad():
         for b in range(0, len(seqs), batch):
             chunk = seqs[b:b+batch]
-            enc = tok(chunk, return_tensors="pt", padding=True)
-            lp = torch.log_softmax(model(**enc).logits, dim=-1)  # [B,L+2,V]
+            enc = tok(chunk, return_tensors="pt", padding=True).to(device)
+            lp = torch.log_softmax(model(**enc).logits, dim=-1).float().cpu()  # [B,L+2,V]
             for j, s in enumerate(chunk):
                 for pos in need[s]:
                     row = lp[j, pos+1]

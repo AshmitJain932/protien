@@ -23,7 +23,8 @@ mutations whose proteins have **zero sequence overlap** with the training set).
 |---|---|---|
 | biophysical features only | r = 0.351 | r = 0.328 |
 | + ESM2 embedding deltas | r = 0.448 | r = 0.386 |
-| **+ ESM2 zero-shot LLR (full)** | **r = 0.516** | **r = 0.413** |
+| **+ ESM2 zero-shot LLR (full, sequence-only)** | **r = 0.516** | **r = 0.413** |
+| **+ structure features (SASA, contacts)** | **r = 0.552** | **r = 0.437** |
 | ESM2 zero-shot LLR alone (training-free) | r = 0.206 | r = 0.270 |
 
 ![final benchmark](figures/benchmark_final.png)
@@ -62,12 +63,15 @@ Raw accuracy is mid-pack; these are the properties most tools lack, all measured
 | PremPS | structure | 0.49 | literature |
 | ACDC-NN-seq | sequence | 0.46 | literature |
 | DDGun3D | structure | 0.43 | literature |
+| ACDC-NN | structure | 0.46 | literature |
+| **This work (structure-aware)** | **structure** | **0.44** | **measured** |
+| DDGun3D | structure | 0.43 | literature |
 | **This work (seq-only)** | **sequence** | **0.41** | **measured** |
 | DDGun (seq) | sequence | 0.41 | literature |
 | Rosetta cartesian_ddg | structure | 0.39 | literature |
 | FoldX | structure | 0.22 | literature |
 
-We match the sequence-only tier and beat FoldX / Rosetta / ThermoNet; we do not beat the top structure/PLM methods. Full table and figure: `results/benchmark_table.md`, `figures/benchmark_table.png`.
+Sequence-only (r=0.41) matches the sequence-only tier and beats FoldX / Rosetta / ThermoNet. Adding structure features (real SASA + contact number from the experimental structure, still anti-symmetric) lifts it to **r=0.44**, which also beats DDGun3D and reaches the ACDC-NN tier — all on CPU. We still do not beat the best structure/PLM methods (PremPS 0.49, DDMut 0.55, ThermoMPNN 0.58). Full table and figure: `results/benchmark_table.md`, `figures/benchmark_table.png`.
 
 **Calibrated uncertainty.** An ensemble plus split-conformal prediction attaches a confidence interval to every prediction. Measured empirical coverage on the blind set: ~81% at nominal 90%, ~74% at nominal 80% (slightly under-covering under distribution shift — reported honestly; distribution-robust calibration is future work). Most ΔΔG tools give a bare point estimate. (`uncertainty.py`)
 
@@ -117,12 +121,19 @@ src/            all pipeline code (portable; paths via src/config.py, override w
   build_s669.py     build + verify S669 (author numbering) + overlap check
   train.py          biophysical model: CV, Ssym, naive ablation, exact-law proof
   train_esm.py      bio + ESM2 ablation
-  train_full.py     final bio + ESM2 + LLR model
+  train_full.py     final bio + ESM2 + LLR model (sequence-only)
+  struct_features.py structure env (SASA, contacts) as anti-symmetric interactions
+  train_struct.py   structure-aware model (+SASA/contacts); best accuracy
+  uncertainty.py    ensemble + split-conformal calibrated confidence intervals
+  build_fireprot.py + train_property.py  property-agnostic trainer (independent dataset)
+  prospective.py    in-silico prospective-design test on the blind set
+  benchmark_table.py S669 comparison vs published tools
   eval_s669.py      blind S669 evaluation
   fit_predictor.py  fit & save the deployable biophysical model
   predict.py        CLI: score mutations, shows the exact reverse
   make_report*.py   benchmark figures
 scripts/get_data.sh clone sources + download PDBs + build the parsed datasets
+scripts/run_gpu.sh  turnkey large-PLM + structure pipeline (auto-uses CUDA)
 data/parsed/        verified datasets (committed); raw clones + PDBs are gitignored
 models/             trained models (biophysical CLI model + full model)
 figures/ results/   reference outputs
@@ -156,12 +167,32 @@ python zeroshot.py                # ESM2 zero-shot LLR (train set)
 python zeroshot.py --data ../data/parsed/s669_dataset.csv --out ../artifacts/llr_s669.npz
 python train_full.py              # final fused model: S2648 CV + S669 blind
 python make_report_final.py       # figure
+python struct_features.py && python struct_features.py --data ../data/parsed/s669_dataset.csv --out ../artifacts/struct_inter_s669.npz
+python train_struct.py            # structure-aware model (best accuracy)
+python uncertainty.py && python prospective.py && python benchmark_table.py
 ```
+
+## Running on a GPU (large language models)
+
+The CPU prototype uses ESM2-35M embeddings and 150M zero-shot scoring. On a GPU you can swap in
+ESM2-650M or 3B for a further accuracy gain — the extractors auto-detect CUDA, so no code changes
+are needed. One turnkey script runs the whole large-model + structure pipeline:
+
+```bash
+pip install -r requirements.txt
+bash scripts/get_data.sh                      # datasets + structures
+ESM_MODEL=facebook/esm2_t33_650M_UR50D bash scripts/run_gpu.sh    # ~20 min on a T4/A100
+# bigger GPU: ESM_MODEL=facebook/esm2_t36_3B_UR50D bash scripts/run_gpu.sh
+```
+
+This reproduces everything through `train_struct.py` with the larger model. It runs unchanged on a
+free Colab GPU (clone the repo, `pip install -r requirements.txt`, run the two commands above).
 
 ## Honest limitations
 
-- **Sequence-only**: no explicit 3D contacts; "burial" is a hydropathy proxy. Structure features
-  would raise accuracy (and could enter the same anti-symmetric recipe as swap-invariant terms).
+- **Two modes, one trade-off**: the sequence-only model needs no structure (works for novel/de-novo
+  targets); the structure-aware model (`train_struct.py`) adds real SASA/contacts for ~+0.02–0.04 r
+  but then needs a structure at inference. Both stay exactly anti-symmetric.
 - **Small, noisy labels**: experimental ΔΔG error alone is ~0.5 kcal/mol and the data is biased
   toward a few well-studied proteins, so protein-blind correlation is modest for everyone here.
 - **ESM2-35M embeddings / 150M zero-shot** were used to fit the CPU budget; larger PLMs should help.

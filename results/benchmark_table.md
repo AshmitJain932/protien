@@ -11,6 +11,7 @@ Pearson r on the S669 blind set (669 mutations, 94 proteins). 'measured' rows ar
 | ACDC-NN-seq | seq | 0.460 | literature |
 | ACDC-NN | struct | 0.460 | literature |
 | RaSP | struct | 0.460 | literature |
+| This work (structure-aware) | struct | 0.437 | measured |
 | INPS-seq | seq | 0.430 | literature |
 | DDGun3D | struct | 0.430 | literature |
 | This work (anti-sym, seq-only) | seq | 0.413 | measured |
