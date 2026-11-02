@@ -1,5 +1,7 @@
 # antisym-ddg — physically-consistent protein stability prediction
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/AshmitJain932/protien/blob/main/run_on_colab.ipynb) — one-click GPU run (650M/3B model + structure features).
+
 Predict the change in folding free energy (**ΔΔG**) when a protein is point-mutated — a core task
 in enzyme and protein engineering (will this mutation make my enzyme more stable?).
 
