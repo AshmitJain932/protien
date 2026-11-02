@@ -13,28 +13,34 @@ This project is built around one principle most predictors ignore:
 Most ML ΔΔG tools are trained on datasets that are ~75% destabilizing mutations, so they quietly
 learn "predict destabilizing": they score well on forward mutations but **fail on the reverse
 mutations** and carry a large negative bias. Here anti-symmetry holds **by construction**, so the
-reverse law is satisfied to machine precision and the model is honest in both directions — while
-staying **sequence-only and CPU-only** (no 3D structure, no GPU).
+reverse law is satisfied to machine precision and the model is honest in both directions. It runs
+**sequence-only on a CPU**, with optional **GPU (ESM2-650M) + structure features** for the best
+accuracy (S669 r = 0.50).
 
 ## Results
 
 All numbers are measured by the code in this repo. The headline is the **S669 blind test** (669
 mutations whose proteins have **zero sequence overlap** with the training set).
 
-| model (anti-symmetric) | S2648 protein-blind CV | S669 blind |
-|---|---|---|
-| biophysical features only | r = 0.351 | r = 0.328 |
-| + ESM2 embedding deltas | r = 0.448 | r = 0.386 |
-| **+ ESM2 zero-shot LLR (full, sequence-only)** | **r = 0.516** | **r = 0.413** |
-| **+ structure features (SASA, contacts)** | **r = 0.552** | **r = 0.437** |
-| ESM2 zero-shot LLR alone (training-free) | r = 0.206 | r = 0.270 |
+| model (anti-symmetric) | S2648 protein-blind CV | S669 blind | compute |
+|---|---|---|---|
+| biophysical features only | r = 0.351 | r = 0.328 | CPU |
+| + ESM2-35M embeddings | r = 0.448 | r = 0.386 | CPU |
+| + ESM2 zero-shot LLR (35M emb / 150M) | r = 0.516 | r = 0.413 | CPU |
+| + structure features (SASA, contacts) | r = 0.552 | r = 0.437 | CPU |
+| **+ ESM2-650M (sequence-only)** | **r = 0.577** | **r = 0.489** | GPU |
+| **+ ESM2-650M + structure** | **r = 0.596** | **r = 0.502** | GPU |
+
+The first four rows run on CPU with small models; the last two use ESM2-650M on a GPU
+(`scripts/run_gpu.sh` / the Colab notebook). Every row is exactly anti-symmetric.
 
 ![final benchmark](figures/benchmark_final.png)
 
 **What this does and does not beat — honestly:**
-- **Raw accuracy:** S669 r ≈ 0.41 sits within the range of published *sequence-only* methods
-  (~0.41–0.46, e.g. DDGun, ACDC-NN-seq) and **below** the best structure- or large-PLM-based tools
-  (~0.5–0.58). This project does **not** claim a state-of-the-art accuracy win.
+- **Raw accuracy:** on CPU with small models, S669 r ≈ 0.41–0.44 (the sequence-only tier). With
+  ESM2-650M on a GPU plus structure features, **S669 r = 0.502**, which **beats most published
+  tools including PremPS (0.49)** and trails only DDMut (0.55) and ThermoMPNN (0.58). Strong, but
+  not the #1 spot — and this project says so.
 - **Physical consistency:** here it wins outright. The forward/reverse law holds exactly and the
   symmetry bias is ≈0, where the standard approach collapses.
 
@@ -54,7 +60,7 @@ trust**.)
 
 ## Beyond accuracy: what makes this different
 
-Raw accuracy is mid-pack; these are the properties most tools lack, all measured in this repo.
+With the GPU model, raw accuracy is upper-tier (above PremPS); the properties below are ones most tools lack, all measured in this repo.
 
 **Benchmark comparison on S669** (our measured number vs published values; structure-based methods shown for context, approximate — verify against the originals):
 
@@ -62,18 +68,22 @@ Raw accuracy is mid-pack; these are the properties most tools lack, all measured
 |---|---|---|---|
 | ThermoMPNN | structure | 0.58 | literature |
 | DDMut | structure | 0.55 | literature |
+| **This work (ESM2-650M + structure)** | **structure** | **0.50** | **measured** |
 | PremPS | structure | 0.49 | literature |
+| **This work (ESM2-650M, seq-only)** | **sequence** | **0.49** | **measured** |
 | ACDC-NN-seq | sequence | 0.46 | literature |
-| DDGun3D | structure | 0.43 | literature |
 | ACDC-NN | structure | 0.46 | literature |
-| **This work (structure-aware)** | **structure** | **0.44** | **measured** |
+| RaSP | structure | 0.46 | literature |
 | DDGun3D | structure | 0.43 | literature |
-| **This work (seq-only)** | **sequence** | **0.41** | **measured** |
 | DDGun (seq) | sequence | 0.41 | literature |
 | Rosetta cartesian_ddg | structure | 0.39 | literature |
 | FoldX | structure | 0.22 | literature |
 
-Sequence-only (r=0.41) matches the sequence-only tier and beats FoldX / Rosetta / ThermoNet. Adding structure features (real SASA + contact number from the experimental structure, still anti-symmetric) lifts it to **r=0.44**, which also beats DDGun3D and reaches the ACDC-NN tier — all on CPU. We still do not beat the best structure/PLM methods (PremPS 0.49, DDMut 0.55, ThermoMPNN 0.58). Full table and figure: `results/benchmark_table.md`, `figures/benchmark_table.png`.
+With ESM2-650M on a GPU, the structure-aware model reaches **r = 0.50** on the blind set — above
+PremPS and the entire sequence-only tier, trailing only DDMut (0.55) and ThermoMPNN (0.58). The
+sequence-only variant reaches **r = 0.49** with no structure at all, beating every other
+sequence-only method listed. (On CPU with small models the same pipeline gives 0.41–0.44.) Full
+table and figure: `results/benchmark_table.md`, `figures/benchmark_table.png`.
 
 **Calibrated uncertainty.** An ensemble plus split-conformal prediction attaches a confidence interval to every prediction. Measured empirical coverage on the blind set: ~81% at nominal 90%, ~74% at nominal 80% (slightly under-covering under distribution shift — reported honestly; distribution-robust calibration is future work). Most ΔΔG tools give a bare point estimate. (`uncertainty.py`)
 

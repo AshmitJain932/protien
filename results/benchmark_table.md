@@ -7,14 +7,14 @@ Pearson r on the S669 blind set (669 mutations, 94 proteins). 'measured' rows ar
 | ThermoMPNN | struct | 0.580 | literature |
 | DDMut | struct | 0.550 | literature |
 | Stability Oracle | struct | 0.530 | literature |
+| This work (structure-aware) | struct | 0.502 | measured |
 | PremPS | struct | 0.490 | literature |
+| This work (anti-sym, seq-only) | seq | 0.489 | measured |
 | ACDC-NN-seq | seq | 0.460 | literature |
 | ACDC-NN | struct | 0.460 | literature |
 | RaSP | struct | 0.460 | literature |
-| This work (structure-aware) | struct | 0.437 | measured |
 | INPS-seq | seq | 0.430 | literature |
 | DDGun3D | struct | 0.430 | literature |
-| This work (anti-sym, seq-only) | seq | 0.413 | measured |
 | DDGun (seq) | seq | 0.410 | literature |
 | Rosetta (cart) | struct | 0.390 | literature |
 | ThermoNet | struct | 0.390 | literature |

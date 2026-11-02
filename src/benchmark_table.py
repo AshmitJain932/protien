@@ -20,8 +20,8 @@ pro = rj(config.RESULTS + "/results_prospective.json", {})
 struct = rj(config.RESULTS + "/results_struct.json", {})
 
 def seq_r():
-    if final and "bio+esm+llr (FULL)" in final: return final["bio+esm+llr (FULL)"]["s669"]["pearson"]
     if struct and "seq (bio+esm+llr)" in struct: return struct["seq (bio+esm+llr)"]["s669"]["pearson"]
+    if final and "bio+esm+llr (FULL)" in final: return final["bio+esm+llr (FULL)"]["s669"]["pearson"]
     return float("nan")
 
 our = seq_r()
