@@ -49,6 +49,32 @@ and obeys the law exactly. (Ssym shares 12/14 proteins with the training set —
 literature but it inflates Ssym for every method trained on S2648, so **S669 is the number to
 trust**.)
 
+## Beyond accuracy: what makes this different
+
+Raw accuracy is mid-pack; these are the properties most tools lack, all measured in this repo.
+
+**Benchmark comparison on S669** (our measured number vs published values; structure-based methods shown for context, approximate — verify against the originals):
+
+| Method | Input | S669 r | Source |
+|---|---|---|---|
+| ThermoMPNN | structure | 0.58 | literature |
+| DDMut | structure | 0.55 | literature |
+| PremPS | structure | 0.49 | literature |
+| ACDC-NN-seq | sequence | 0.46 | literature |
+| DDGun3D | structure | 0.43 | literature |
+| **This work (seq-only)** | **sequence** | **0.41** | **measured** |
+| DDGun (seq) | sequence | 0.41 | literature |
+| Rosetta cartesian_ddg | structure | 0.39 | literature |
+| FoldX | structure | 0.22 | literature |
+
+We match the sequence-only tier and beat FoldX / Rosetta / ThermoNet; we do not beat the top structure/PLM methods. Full table and figure: `results/benchmark_table.md`, `figures/benchmark_table.png`.
+
+**Calibrated uncertainty.** An ensemble plus split-conformal prediction attaches a confidence interval to every prediction. Measured empirical coverage on the blind set: ~81% at nominal 90%, ~74% at nominal 80% (slightly under-covering under distribution shift — reported honestly; distribution-robust calibration is future work). Most ΔΔG tools give a bare point estimate. (`uncertainty.py`)
+
+**Multi-property framework.** The anti-symmetric recipe is property-agnostic: `train_property.py` trains on any mutational property by swapping the target column. Validated on an independent FireProtDB stability set (3,404 mutations, 100 proteins, only 6 shared with S2648) — protein-blind CV r = 0.29 (biophysical features only). Solubility and expression plug in once mutational datasets are added.
+
+**In-silico prospective design** (the honest stand-in for wet-lab validation). On the blind set, following the model's picks: predicted-stabilizing mutations are **2.07× enriched** for true stabilizers (51.9% vs a 25.1% base rate), and the **top-3 picks per protein contain a real stabilizer 74% of the time**. This is the "fewer experiments to a win" metric that matters for engineering — measured, not promised. True prospective validation needs a wet lab (see roadmap). (`prospective.py`)
+
 ## Why it is anti-symmetric by construction
 
 Every input feature is a sign-flipping quantity, so the whole feature vector `F` satisfies

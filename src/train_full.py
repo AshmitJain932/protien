@@ -20,9 +20,11 @@ def rmse(a,b): return float(np.sqrt(np.mean((a-b)**2)))
 def met(y,p): return dict(pearson=float(pearsonr(y,p)[0]),spearman=float(spearmanr(y,p)[0]),rmse=rmse(y,p),n=int(len(y)))
 
 def main():
+    import argparse
+    ap=argparse.ArgumentParser(); ap.add_argument("--llr", default="llr.npz"); a=ap.parse_args()
     tr=pd.read_csv(DDG); m2=(tr.dataset=="S2648").values
     emb=np.load(config.WORK + "/esm_delta.npz")["delta"]
-    llr=np.load(config.WORK + "/llr.npz")["llr"][:,None]
+    llr=np.load(config.WORK + "/" + a.llr)["llr"][:,None]
     Xbio=F.featurize_df(tr).astype(np.float32)
     s=tr[m2].reset_index(drop=True); ys=s.ddg.values; fs=s.fold.values
     bio_s,emb_s,llr_s=Xbio[m2],emb[m2],llr[m2]
@@ -30,7 +32,7 @@ def main():
     te=pd.read_csv(S669).reset_index(drop=True); yte=te.ddg.values
     Xbio_te=F.featurize_df(te).astype(np.float32)
     emb_te=np.load(config.WORK + "/esm_delta_s669.npz")["delta"]
-    llr_te=np.load(config.WORK + "/llr_s669.npz")["llr"][:,None]
+    llr_te=np.load(config.WORK + "/" + a.llr.replace(".npz","_s669.npz"))["llr"][:,None]
 
     sets={
       "bio":                 (bio_s, Xbio_te),

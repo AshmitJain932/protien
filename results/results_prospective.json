@@ -1,0 +1,9 @@
+{
+  "n_blind": 669,
+  "base_rate_stabilizing": 0.25112107623318386,
+  "precision_pred_stabilizing": 0.5192307692307693,
+  "enrichment_vs_base": 2.067651098901099,
+  "proteins_scored": 50,
+  "top1_hit_rate": 0.5,
+  "top3_hit_rate": 0.74
+}

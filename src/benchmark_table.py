@@ -18,8 +18,8 @@ unc = rj(config.RESULTS + "/results_uncertainty_650M.json") or rj(config.RESULTS
 pro = rj(config.RESULTS + "/results_prospective.json", {})
 
 def our_r():
+    if final and "bio+esm+llr (FULL)" in final: return final["bio+esm+llr (FULL)"]["s669"]["pearson"], "full-data"
     if unc and "s669_ensemble_r" in unc: return unc["s669_ensemble_r"], "ensemble"
-    if final and "bio+esm+llr (FULL)" in final: return final["bio+esm+llr (FULL)"]["s669"]["pearson"], "single"
     return float("nan"), "?"
 
 our, kind = our_r()
