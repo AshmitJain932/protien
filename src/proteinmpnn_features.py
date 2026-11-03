@@ -14,7 +14,9 @@ is ours.
 import argparse, warnings, numpy as np, pandas as pd, torch
 warnings.filterwarnings("ignore")
 
-MPNN_DIR = "/home/user/data_src/ProteinMPNN"
+MPNN_DIR = _os.environ.get("PROTEINMPNN_DIR") or (config.DATA + "/ProteinMPNN")
+if not _os.path.isdir(MPNN_DIR) and _os.path.isdir("/home/user/data_src/ProteinMPNN"):
+    MPNN_DIR = "/home/user/data_src/ProteinMPNN"   # local dev fallback
 _sys.path.insert(0, MPNN_DIR)
 from protein_mpnn_utils import parse_PDB, tied_featurize, ProteinMPNN
 

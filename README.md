@@ -34,6 +34,13 @@ mutations whose proteins have **zero sequence overlap** with the training set).
 The first four rows run on CPU with small models; the last two use ESM2-650M on a GPU
 (`scripts/run_gpu.sh` / the Colab notebook). Every row is exactly anti-symmetric.
 
+**ProteinMPNN inverse-folding feature.** Adding [ProteinMPNN](https://github.com/dauparas/ProteinMPNN)
+(Dauparas et al., Baker lab; a structure-conditioned log-odds `log P(mut|backbone) − log P(wt|backbone)`,
+used as a frozen extractor, naturally anti-symmetric) is a large lever. Measured on the CPU stack it
+raises S2648 CV **0.552 → 0.633** and S669 **0.437 → 0.457** (ties ACDC-NN). On a GPU it stacks with
+ESM2-650M through `run_gpu.sh`; the combined ESM2-650M + structure + ProteinMPNN run is the current
+path toward the DDMut/ThermoMPNN tier — run it on Colab and the number updates here.
+
 ![final benchmark](figures/benchmark_final.png)
 
 **What this does and does not beat — honestly:**
@@ -135,7 +142,8 @@ src/            all pipeline code (portable; paths via src/config.py, override w
   train_esm.py      bio + ESM2 ablation
   train_full.py     final bio + ESM2 + LLR model (sequence-only)
   struct_features.py structure env (SASA, contacts) as anti-symmetric interactions
-  train_struct.py   structure-aware model (+SASA/contacts); best accuracy
+  proteinmpnn_features.py ProteinMPNN inverse-folding log-odds feature (third-party, MIT)
+  train_struct.py   structure-aware model (+SASA/contacts/ProteinMPNN); best accuracy
   uncertainty.py    ensemble + split-conformal calibrated confidence intervals
   build_fireprot.py + train_property.py  property-agnostic trainer (independent dataset)
   prospective.py    in-silico prospective-design test on the blind set
@@ -212,10 +220,11 @@ free Colab GPU (clone the repo, `pip install -r requirements.txt`, run the two c
 
 ## Roadmap
 
-1. Larger PLM (ESM2-650M / 3B) for embeddings and zero-shot — the biggest accuracy lever.
-2. Structure-aware swap-invariant environment features (SASA, contact number) from predicted or
-   experimental structures.
-3. Train on the Tsuboyama/Rocklin mega-scale stability dataset (~800k variants) — needs a GPU.
+1. ✅ Larger PLM (ESM2-650M) and ✅ ProteinMPNN inverse-folding feature — both integrated; the
+   combined ESM2-650M + structure + ProteinMPNN GPU run is the next number to lock in.
+2. ESM2-3B and LoRA fine-tuning of the PLM end-to-end (vs frozen features).
+3. Train on the Tsuboyama/Rocklin mega-scale stability dataset (~800k variants) — the route to
+   >0.7 on a clean benchmark; needs a GPU.
 4. Extend the anti-symmetric recipe to solubility and expression prediction.
 
 ## Data sources & references (verify against originals)
@@ -224,6 +233,7 @@ free Colab GPU (clone the repo, `pip install -r requirements.txt`, run the two c
 - S669 blind set (via ThermoMPNN): Pancotti et al., *Brief. Bioinform.* 2022; Dieckhaus et al. (ThermoMPNN) 2024; `github.com/Kuhlman-Lab/ThermoMPNN`.
 - Ssym symmetry benchmark: Pucci, Usmanova et al. 2018.
 - ESM2 protein language model: Lin et al., *Science* 2023.
+- ProteinMPNN inverse-folding model (structure feature): Dauparas et al., *Science* 2022; `github.com/dauparas/ProteinMPNN` (MIT).
 - Biophysical scales: Kyte–Doolittle; Pace & Scholtz (helix); Chou–Fasman (sheet); Vihinen (flexibility).
 
 ## License

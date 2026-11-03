@@ -9,6 +9,7 @@ mkdir -p "$DATA/pdbs"
 # 1. benchmark sources
 [ -d "$DATA/acdc-nn" ] || git clone --depth 1 https://github.com/compbiomed-unito/acdc-nn "$DATA/acdc-nn"
 [ -d "$DATA/ThermoMPNN_Kuhlman-Lab" ] || git clone --depth 1 https://github.com/Kuhlman-Lab/ThermoMPNN "$DATA/ThermoMPNN_Kuhlman-Lab"
+[ -d "$DATA/ProteinMPNN" ] || git clone --depth 1 https://github.com/dauparas/ProteinMPNN "$DATA/ProteinMPNN"  # structure features (MIT)
 
 # 2. unique PDB ids across all three sets
 python3 - "$DATA" <<'PY'
