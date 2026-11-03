@@ -20,7 +20,13 @@ accuracy (S669 r = 0.50).
 ## Results
 
 All numbers are measured by the code in this repo. The headline is the **S669 blind test** (669
-mutations whose proteins have **zero sequence overlap** with the training set).
+mutations, 94 proteins). S669 has **no exact-sequence or mutation overlap** with the training set,
+but it is **not** fully non-redundant: a homology check (`src/splits.py`, local-alignment identity)
+finds **14/94 S669 proteins ≥30% identical to a training protein** (max 42%). We therefore also
+report a **homology-controlled clean-80 subset** (80 proteins with <30% identity to training) in
+[Scientific validity](#scientific-validity-honest-evaluation) — on which accuracy is **equal or
+slightly higher**, so the headline is not a homology artifact. See that section for confidence
+intervals and the honest caveats before citing any number below.
 
 | model (anti-symmetric) | S2648 protein-blind CV | S669 blind | compute |
 |---|---|---|---|
@@ -106,6 +112,49 @@ table and figure: `results/benchmark_table.md`, `figures/benchmark_table.png`.
 
 **In-silico prospective design** (the honest stand-in for wet-lab validation). On the blind set, following the model's picks: predicted-stabilizing mutations are **2.07× enriched** for true stabilizers (51.9% vs a 25.1% base rate), and the **top-3 picks per protein contain a real stabilizer 74% of the time**. This is the "fewer experiments to a win" metric that matters for engineering — measured, not promised. True prospective validation needs a wet lab (see roadmap). (`prospective.py`)
 
+## Scientific validity (honest evaluation)
+
+Read this before citing any number above. It reflects a homology-controlled re-evaluation with
+confidence intervals (`src/splits.py`, `src/evaluate.py`).
+
+**Homology-controlled test.** S669 shares no exact sequences or mutations with training, but
+local-alignment identity shows 14/94 proteins ≥30% identical to a training protein (max 42%). We
+cluster all proteins at 30% identity and define a **clean-80** subset (no training protein in the
+cluster). Re-evaluated with 5 seeds and a 1,000-sample bootstrap (CPU-reproducible models only):
+
+| model | S669 full (N=669) | clean-80 (N=511) |
+|---|---|---|
+| biophysical | r = 0.335 ± 0.003, 95% CI [0.26, 0.41] | r = 0.353, CI [0.27, 0.42] |
+| bio + ESM + LLR | r = 0.415 ± 0.004, 95% CI [0.34, 0.48] | r = 0.437, CI [0.37, 0.51] |
+
+Accuracy on clean-80 is **equal or slightly higher** than on full S669, so the headline is **not a
+homology artifact**. Seed variance is negligible (±0.004); the real uncertainty is the bootstrap CI
+(±~0.07), which means **differences smaller than ~0.07 are not significant** — e.g. 0.489 vs 0.502
+(± ProteinMPNN) are statistically indistinguishable.
+
+**Known limitations — do not overstate these.**
+1. **S669 was used for feature/model selection** across configs, so it functioned as a validation
+   set, not a pristine test. Clean-80 is now the frozen, homology-controlled set; freeze it before
+   further tuning.
+2. **The 650M / structure numbers (0.489–0.502) are from a one-off GPU run**, are **not saved as a
+   checkpoint**, and are **not reproducible from this repo** as-is; their clean-80 re-evaluation is
+   pending a GPU run. The fully CPU-reproducible headline is **bio + ESM + LLR ≈ 0.42** (clean-80 0.44).
+3. **The app and CLI run the fast biophysical model, not the 650M model** — the headline model is
+   not the one users interact with.
+4. **Uncertainty intervals under-cover** (~85% empirical at nominal 90%); treat them as approximate,
+   not guaranteed.
+5. **The 2.07× enrichment is retrospective** — it selects among mutations that already have
+   measurements, not arbitrary untested ones. Prospective validation is required to claim lab savings.
+6. **Literature comparisons use published numbers**, not baselines re-run on this split; they are
+   context, not head-to-head results.
+
+**Reproduce this evaluation:** `cd src && python splits.py && python evaluate.py`
+(writes `data/parsed/protein_clusters.tsv`, `data/parsed/s669_clean.txt`, `results/results_clean_eval.json`).
+
+**The decisive next step** is prospective wet-lab validation (~32 mutations: predicted
+stabilizing / neutral / destabilizing / random controls, predictions frozen first) — the only test
+that establishes real-world usefulness.
+
 ## Why it is anti-symmetric by construction
 
 Every input feature is a sign-flipping quantity, so the whole feature vector `F` satisfies
@@ -157,6 +206,8 @@ src/            all pipeline code (portable; paths via src/config.py, override w
   prospective.py    in-silico prospective-design test on the blind set
   benchmark_table.py S669 comparison vs published tools
   build_megascale.py + train_megascale.py  mega-scale (Tsuboyama ~270k) training + eval
+  splits.py         sequence-identity clustering + homology-controlled clean-80 test split
+  evaluate.py       rigorous eval: full vs clean-80, multi-seed + bootstrap 95% CIs
   eval_s669.py      blind S669 evaluation
   fit_predictor.py  fit & save the deployable biophysical model
   predict.py        CLI: score mutations, shows the exact reverse
