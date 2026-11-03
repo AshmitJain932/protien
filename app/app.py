@@ -88,7 +88,7 @@ def analyze(seq, state):
     seq = clean(seq)
     if len(seq) < 10:
         return "Paste a protein sequence (≥10 residues).", None, None, state
-    models = state or SERVING
+    models = state["models"] if isinstance(state, dict) and state.get("models") else SERVING
     seq, df = scan(seq, models)
     summ = (f"**{len(seq)} residues** · scanned **{len(df)}** possible point mutations · "
             f"model: anti-symmetric ensemble (sequence-only, no structure needed).\n\n"
