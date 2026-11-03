@@ -136,9 +136,12 @@ homology artifact**. Seed variance is negligible (±0.004); the real uncertainty
 1. **S669 was used for feature/model selection** across configs, so it functioned as a validation
    set, not a pristine test. Clean-80 is now the frozen, homology-controlled set; freeze it before
    further tuning.
-2. **The 650M / structure numbers (0.489–0.502) are from a one-off GPU run**, are **not saved as a
-   checkpoint**, and are **not reproducible from this repo** as-is; their clean-80 re-evaluation is
-   pending a GPU run. The fully CPU-reproducible headline is **bio + ESM + LLR ≈ 0.42** (clean-80 0.44).
+2. **The 650M / structure numbers (0.489–0.502) come from a GPU run.** The training scripts now
+   **save the trained model + a reproducibility card** (`models/model_struct__*.json`,
+   `model_cards_struct.json`) and can copy models + feature caches to `PERSIST_DIR` (e.g. Google
+   Drive), so the model is reusable — but **inference still needs a GPU** (ESM2-650M embeddings per
+   query), and the **clean-80 re-evaluation of the 650M model is still pending a GPU run**. The
+   fully CPU-reproducible headline remains **bio + ESM + LLR ≈ 0.42** (clean-80 0.44).
 3. **The app and CLI run the fast biophysical model, not the 650M model** — the headline model is
    not the one users interact with.
 4. **Uncertainty intervals under-cover** (~85% empirical at nominal 90%); treat them as approximate,
@@ -280,8 +283,16 @@ ESM_MODEL=facebook/esm2_t33_650M_UR50D bash scripts/run_gpu.sh    # ~20 min on a
 # bigger GPU: ESM_MODEL=facebook/esm2_t36_3B_UR50D bash scripts/run_gpu.sh
 ```
 
-This reproduces everything through `train_struct.py` with the larger model. It runs unchanged on a
-free Colab GPU (clone the repo, `pip install -r requirements.txt`, run the two commands above).
+This reproduces everything through `train_struct.py` with the larger model, and **saves the trained
+models + reproducibility cards** to `models/`. To keep them across Colab sessions, set a persist
+directory first:
+
+```bash
+PERSIST_DIR=/content/drive/MyDrive/protien ESM_MODEL=facebook/esm2_t33_650M_UR50D bash scripts/run_gpu.sh
+```
+
+It runs unchanged on a free Colab GPU (clone the repo, `pip install -r requirements.txt`, run the
+commands above).
 
 ## Mega-scale training (toward a clean >0.7 benchmark)
 

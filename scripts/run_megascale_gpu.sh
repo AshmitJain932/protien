@@ -10,5 +10,11 @@ echo "Using model: $MODEL"
 python3 build_megascale.py
 python3 zeroshot.py     --model "$MODEL" --data ../data/parsed/megascale.csv --out ../artifacts/llr_mega.npz
 python3 esm_features.py  --model "$MODEL" --data ../data/parsed/megascale.csv --out ../artifacts/esm_delta_mega.npz
-python3 train_megascale.py   # auto-uses the mega embeddings if present
-echo "done -> results/results_megascale.json"
+python3 train_megascale.py   # auto-uses the mega embeddings if present; saves models/model_mega.json
+if [ -n "${PERSIST_DIR:-}" ]; then
+  mkdir -p "$PERSIST_DIR"
+  cp -r ../models "$PERSIST_DIR"/ 2>/dev/null || true
+  cp -r ../artifacts "$PERSIST_DIR"/ 2>/dev/null || true
+  echo "persisted models + artifacts to $PERSIST_DIR"
+fi
+echo "done -> results/results_megascale.json (+ models/model_mega.json, model_cards_mega.json)"

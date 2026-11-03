@@ -25,3 +25,8 @@ artifacts/
 
 # local run logs
 *.log
+
+# trained-model run artifacts (persist these to Drive/HF via PERSIST_DIR, not git)
+models/model_struct__*.json
+models/model_mega*.json
+models/model_cards_*.json

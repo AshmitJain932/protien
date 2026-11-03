@@ -55,6 +55,18 @@ def main():
     ps = anti(model, Xs); r_s669 = pearsonr(s.ddg.values, ps)[0]
     transfer = dict(pearson_signed=float(r_s669), pearson_abs=float(abs(r_s669)), n=len(s))
 
+    # --- save the trained model + reproducibility card ---
+    _os.makedirs(config.MODELS, exist_ok=True)
+    blocks = [["biophysical", int(bio.shape[1])]]
+    if use_emb: blocks.append(["esm_delta", int(np.load(config.WORK + "/esm_delta_mega.npz")["delta"].shape[1])])
+    blocks.append(["llr", 1])
+    model.save_model(_os.path.join(config.MODELS, "model_mega.json"))
+    json.dump(dict(model_file="model_mega.json", feature_dim=int(X.shape[1]), feature_blocks=blocks,
+                   anti_symmetric=True, n_train_mutations=int(tr.sum()), used_esm_embeddings=bool(use_emb),
+                   inference="pred = (m.predict(F) - m.predict(-F)) / 2 ; concat feature_blocks in order.",
+                   metrics=dict(mega_test=overall, mega_per_protein=perprot)),
+              open(_os.path.join(config.MODELS, "model_cards_mega.json"), "w"), indent=2)
+
     out = dict(mega_test=overall, mega_per_protein=perprot, s669_transfer=transfer)
     json.dump(out, open(config.RESULTS + "/results_megascale.json", "w"), indent=2)
     print("\n=== mega-scale held-out TEST (protein-blind, 28 domains) ===")

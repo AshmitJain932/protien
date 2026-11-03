@@ -14,9 +14,12 @@ S669 = config.DATA + "/parsed/s669_dataset.csv"
 def augment(X, y): return np.vstack([X, -X]), np.concatenate([y, -y])
 def anti(m, X): return (m.predict(X) - m.predict(-X)) / 2.0
 def rmse(a, b): return float(np.sqrt(np.mean((a - b) ** 2)))
-def xgb(): return XGBRegressor(n_estimators=700, max_depth=4, learning_rate=0.03, subsample=0.8,
+XGB_PARAMS = dict(n_estimators=700, max_depth=4, learning_rate=0.03, subsample=0.8,
     colsample_bytree=0.6, reg_lambda=2.0, min_child_weight=4, n_jobs=4, random_state=0)
+def xgb(): return XGBRegressor(**XGB_PARAMS)
 def met(y, p): return dict(pearson=float(pearsonr(y, p)[0]), spearman=float(spearmanr(y, p)[0]), rmse=rmse(y, p))
+def slug(name): return (name.replace(" ", "_").replace("+", "plus").replace("(", "")
+                        .replace(")", "").replace("__", "_").strip("_"))
 
 def main(llr="llr.npz"):
     tr = pd.read_csv(DDG); m2 = (tr.dataset == "S2648").values
@@ -49,7 +52,15 @@ def main(llr="llr.npz"):
     if mpnn is not None and mpnn_te is not None:
         sets["+ structure + ProteinMPNN"] = (np.hstack(base + [st[m2], mpnn[m2]]),
                                              np.hstack(base_te + [st_te, mpnn_te]))
-    res = {}
+    # feature-block layout per set (ordered) so a saved model can be reassembled at inference
+    bd, ed, sd = bio.shape[1], emb.shape[1], st.shape[1]
+    blocks = {
+        "seq (bio+esm+llr)":           [["biophysical", bd], ["esm_delta", ed], ["llr", 1]],
+        "+ structure":                 [["biophysical", bd], ["esm_delta", ed], ["llr", 1], ["struct_inter", sd]],
+        "+ structure + ProteinMPNN":   [["biophysical", bd], ["esm_delta", ed], ["llr", 1], ["struct_inter", sd], ["mpnn_llr", 1]],
+    }
+    _os.makedirs(config.MODELS, exist_ok=True)
+    res, cards = {}, {}
     for name, (X, Xte) in sets.items():
         oof = np.zeros(len(y))
         for k in range(10):
@@ -58,10 +69,23 @@ def main(llr="llr.npz"):
         cv = met(y, oof)
         full = xgb().fit(*augment(X, y)); blind = met(yte, anti(full, Xte))
         res[name] = dict(cv=cv, s669=blind)
+        # --- save the trained model + a reproducibility card ---
+        mfile = f"model_struct__{slug(name)}.json"
+        full.save_model(_os.path.join(config.MODELS, mfile))
+        cards[name] = dict(
+            model_file=mfile, feature_dim=int(X.shape[1]), feature_blocks=blocks[name],
+            xgb_params=XGB_PARAMS, n_train_mutations=int(len(y)), llr_source=llr,
+            anti_symmetric=True,
+            inference="pred = (m.predict(F) - m.predict(-F)) / 2 ; build F by concatenating the "
+                      "feature_blocks in order using esm_features.py / zeroshot.py / "
+                      "struct_features.py / proteinmpnn_features.py with the SAME model/settings.",
+            metrics=res[name])
         print(f"{name:22s} | S2648 CV r={cv['pearson']:.3f} rmse={cv['rmse']:.2f} "
-              f"| S669 r={blind['pearson']:.3f} rho={blind['spearman']:.3f} rmse={blind['rmse']:.2f}")
+              f"| S669 r={blind['pearson']:.3f} rho={blind['spearman']:.3f} rmse={blind['rmse']:.2f} "
+              f"| saved {mfile}")
     json.dump(res, open(config.RESULTS + "/results_struct.json", "w"), indent=2)
-    print("saved results_struct.json")
+    json.dump(cards, open(_os.path.join(config.MODELS, "model_cards_struct.json"), "w"), indent=2)
+    print("saved results_struct.json + model checkpoints + model_cards_struct.json")
 
 if __name__ == "__main__":
     import sys

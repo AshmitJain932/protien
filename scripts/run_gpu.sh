@@ -18,4 +18,11 @@ python3 struct_features.py --data ../data/parsed/s669_dataset.csv --out ../artif
 python3 proteinmpnn_features.py --data ../data/parsed/ddg_dataset.csv  --out ../artifacts/mpnn_llr.npz      --pdbdir ../data/pdbs
 python3 proteinmpnn_features.py --data ../data/parsed/s669_dataset.csv --out ../artifacts/mpnn_llr_s669.npz --pdbdir ../data/pdbs
 python3 train_struct.py llr.npz
-echo "done -> results/results_struct.json"
+# optionally persist trained models + feature caches so the run is reusable (e.g. PERSIST_DIR=/content/drive/MyDrive/protien)
+if [ -n "${PERSIST_DIR:-}" ]; then
+  mkdir -p "$PERSIST_DIR"
+  cp -r ../models "$PERSIST_DIR"/ 2>/dev/null || true
+  cp -r ../artifacts "$PERSIST_DIR"/ 2>/dev/null || true
+  echo "persisted models + artifacts to $PERSIST_DIR"
+fi
+echo "done -> results/results_struct.json (+ models/model_struct__*.json, model_cards_struct.json)"
