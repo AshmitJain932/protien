@@ -156,6 +156,7 @@ src/            all pipeline code (portable; paths via src/config.py, override w
   build_fireprot.py + train_property.py  property-agnostic trainer (independent dataset)
   prospective.py    in-silico prospective-design test on the blind set
   benchmark_table.py S669 comparison vs published tools
+  build_megascale.py + train_megascale.py  mega-scale (Tsuboyama ~270k) training + eval
   eval_s669.py      blind S669 evaluation
   fit_predictor.py  fit & save the deployable biophysical model
   predict.py        CLI: score mutations, shows the exact reverse
@@ -216,6 +217,33 @@ ESM_MODEL=facebook/esm2_t33_650M_UR50D bash scripts/run_gpu.sh    # ~20 min on a
 This reproduces everything through `train_struct.py` with the larger model. It runs unchanged on a
 free Colab GPU (clone the repo, `pip install -r requirements.txt`, run the two commands above).
 
+## Mega-scale training (toward a clean >0.7 benchmark)
+
+The S2648 benchmark has only ~2,600 training mutations. The **Tsuboyama/Rocklin mega-scale dataset**
+(`build_megascale.py`) gives **271,231 single mutations across 298 domains** from one consistent
+assay, with protein-blind train/val/test splits. The same anti-symmetric recipe trains on it
+(`train_megascale.py`).
+
+Measured so far, with the **lightweight** feature set (biophysical + ESM zero-shot LLR, CPU):
+
+| mega-scale held-out test (protein-blind) | value |
+|---|---|
+| overall Pearson r | 0.569 |
+| **per-protein ranking (mean Spearman)** | **0.634** |
+| transfer to S669 (trained on mega-scale) | \|r\| = 0.43 |
+
+Honest read: cheap features reach ~0.57 on mega-scale and ~0.63 per-protein ranking — **not yet
+0.7**, and mega-scale training does **not** transfer better to S669 than in-domain S2648 training
+(the mega domains are small designed proteins). Crossing 0.7 needs the heavy features on this large
+set — per-variant ESM-650M embeddings and/or structure — which is a GPU job:
+
+```bash
+bash scripts/run_gpu.sh            # first (produces 650M S669 features for the transfer test)
+bash scripts/run_megascale_gpu.sh  # mega-scale with 650M embeddings (~40-60 min on a T4)
+```
+
+`train_megascale.py` automatically includes the mega embeddings once that script produces them.
+
 ## Honest limitations
 
 - **Two modes, one trade-off**: the sequence-only model needs no structure (works for novel/de-novo
@@ -231,8 +259,9 @@ free Colab GPU (clone the repo, `pip install -r requirements.txt`, run the two c
 1. ✅ ESM2-650M, ✅ structure features, ✅ ProteinMPNN — all integrated and measured. Best blind
    S669 = 0.502 (650M + structure); ProteinMPNN did not improve the blind set on this stack.
    Feature-stacking has saturated on ~2,600 training mutations.
-2. **Mega-scale data (Tsuboyama/Rocklin, ~800k variants)** — the real next lever: ~300× more data,
-   one clean assay, the route to >0.7 on a clean benchmark. Needs a GPU.
+2. ✅ **Mega-scale data (Tsuboyama/Rocklin)** — pipeline built (271k single mutations, 298 domains).
+   Lightweight features give 0.57 / 0.63 per-protein ranking; crossing 0.7 needs the 650M-embedding
+   GPU run (`run_megascale_gpu.sh`), which is the current open step.
 3. ESM2-3B and LoRA fine-tuning of the PLM end-to-end (vs frozen features).
 4. Extend the anti-symmetric recipe to solubility and expression prediction.
 

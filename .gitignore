@@ -13,6 +13,8 @@ data/pdb_ids.txt
 # keep committed, verified datasets:
 !data/parsed/
 !data/parsed/*.csv
+# megascale.csv is 26MB and regenerable (src/build_megascale.py)
+data/parsed/megascale.csv
 
 # intermediate caches (regenerate with the pipeline)
 artifacts/

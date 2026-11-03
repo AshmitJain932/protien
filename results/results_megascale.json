@@ -1,0 +1,18 @@
+{
+  "mega_test": {
+    "pearson": 0.5690425066408288,
+    "spearman": 0.5072000186362735,
+    "rmse": 0.8730590065767322,
+    "n": 28172
+  },
+  "mega_per_protein": {
+    "mean_spearman": 0.6335322544029662,
+    "median_spearman": 0.6167898483819929,
+    "n_proteins": 28
+  },
+  "s669_transfer": {
+    "pearson_signed": 0.42761058759019605,
+    "pearson_abs": 0.42761058759019605,
+    "n": 669
+  }
+}
