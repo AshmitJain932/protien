@@ -184,6 +184,21 @@ python predict.py <SEQUENCE> M1A V47I ...
 python predict.py KVFGRCELAAAMKRHGLDNYRGYSLGNWVCAAKFESNFNTQATNRNTDGSTDYGILQINSRWWCNDGRTPGSRNLCNIPCSALLSSDITASVNCAKKIVSDGNGMNAWVAWRNRCKGTDVQAWIRGCRL W62G D18A
 ```
 
+## Web app (`app/`)
+
+A Gradio web app runs the engine for non-coders: paste a sequence → predicted ΔΔG for every
+mutation **with a calibrated trust badge**, a **"what to test next"** list (ranked by model
+uncertainty), and **"teach it"** — paste your measured results and the model re-fits to *your*
+protein, live. Sequence-only, no structure, CPU.
+
+```bash
+cd app && pip install -r requirements.txt && python app.py   # http://localhost:7860
+```
+
+Deploy free: create a **Gradio Space** on Hugging Face and upload the contents of `app/`
+(`app.py`, `features.py`, `ddg_dataset.csv`, `requirements.txt`, `README.md`) — it runs on free CPU
+and gives a public URL.
+
 ## Reproduce the benchmarks
 
 ```bash
