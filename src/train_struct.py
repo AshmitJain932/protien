@@ -24,6 +24,14 @@ def main(llr="llr.npz"):
     emb = np.load(config.WORK + "/esm_delta.npz")["delta"]
     ll = np.load(config.WORK + "/" + llr)["llr"][:, None]
     st = np.load(config.WORK + "/struct_inter.npz")["X"]
+    def opt(path, col=None):
+        try:
+            d = np.load(config.WORK + "/" + path)
+            v = d["llr"] if "llr" in d else d["X"]
+            return v[:, None] if v.ndim == 1 else v
+        except Exception:
+            return None
+    mpnn = opt("mpnn_llr.npz")
     s = tr[m2].reset_index(drop=True); y = s.ddg.values; fs = s.fold.values
 
     te = pd.read_csv(S669).reset_index(drop=True); yte = te.ddg.values
@@ -31,12 +39,16 @@ def main(llr="llr.npz"):
     emb_te = np.load(config.WORK + "/esm_delta_s669.npz")["delta"]
     ll_te = np.load(config.WORK + "/" + llr.replace(".npz", "_s669.npz"))["llr"][:, None]
     st_te = np.load(config.WORK + "/struct_inter_s669.npz")["X"]
+    mpnn_te = opt("mpnn_llr_s669.npz")
 
     base = [bio[m2], emb[m2], ll[m2]]; base_te = [bio_te, emb_te, ll_te]
     sets = {
         "seq (bio+esm+llr)":    (np.hstack(base),            np.hstack(base_te)),
         "+ structure":          (np.hstack(base + [st[m2]]), np.hstack(base_te + [st_te])),
     }
+    if mpnn is not None and mpnn_te is not None:
+        sets["+ structure + ProteinMPNN"] = (np.hstack(base + [st[m2], mpnn[m2]]),
+                                             np.hstack(base_te + [st_te, mpnn_te]))
     res = {}
     for name, (X, Xte) in sets.items():
         oof = np.zeros(len(y))
