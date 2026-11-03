@@ -30,16 +30,24 @@ mutations whose proteins have **zero sequence overlap** with the training set).
 | + structure features (SASA, contacts) | r = 0.552 | r = 0.437 | CPU |
 | **+ ESM2-650M (sequence-only)** | **r = 0.577** | **r = 0.489** | GPU |
 | **+ ESM2-650M + structure** | **r = 0.596** | **r = 0.502** | GPU |
+| + ESM2-650M + structure + ProteinMPNN | r = 0.651 | r = 0.489 | GPU |
 
 The first four rows run on CPU with small models; the last two use ESM2-650M on a GPU
 (`scripts/run_gpu.sh` / the Colab notebook). Every row is exactly anti-symmetric.
 
-**ProteinMPNN inverse-folding feature.** Adding [ProteinMPNN](https://github.com/dauparas/ProteinMPNN)
-(Dauparas et al., Baker lab; a structure-conditioned log-odds `log P(mut|backbone) − log P(wt|backbone)`,
-used as a frozen extractor, naturally anti-symmetric) is a large lever. Measured on the CPU stack it
-raises S2648 CV **0.552 → 0.633** and S669 **0.437 → 0.457** (ties ACDC-NN). On a GPU it stacks with
-ESM2-650M through `run_gpu.sh`; the combined ESM2-650M + structure + ProteinMPNN run is the current
-path toward the DDMut/ThermoMPNN tier — run it on Colab and the number updates here.
+**ProteinMPNN inverse-folding feature — and an honest negative result.** Adding
+[ProteinMPNN](https://github.com/dauparas/ProteinMPNN) (Dauparas et al., Baker lab; a
+structure-conditioned log-odds `log P(mut|backbone) − log P(wt|backbone)`, frozen extractor,
+naturally anti-symmetric) **helps when the base model is weak and is redundant when it is strong**:
+
+- On the **CPU stack** (35M embeddings) it is a large lever: S2648 CV 0.552 → 0.633, S669 0.437 → 0.457.
+- On the **GPU stack** (ESM2-650M + structure) it raises cross-validation to 0.651 but **does not
+  improve the blind set** — S669 goes 0.502 → 0.489. ESM2-650M already captures the signal, so the
+  extra feature only adds in-distribution overfitting.
+
+So the best blind result stays **ESM2-650M + structure, S669 r = 0.502**. The lesson is concrete:
+on ~2,600 training mutations, feature-stacking has saturated — further gains need **more and cleaner
+data** (mega-scale, roadmap below) or **fine-tuning the language model**, not more features.
 
 ![final benchmark](figures/benchmark_final.png)
 
@@ -220,11 +228,12 @@ free Colab GPU (clone the repo, `pip install -r requirements.txt`, run the two c
 
 ## Roadmap
 
-1. ✅ Larger PLM (ESM2-650M) and ✅ ProteinMPNN inverse-folding feature — both integrated; the
-   combined ESM2-650M + structure + ProteinMPNN GPU run is the next number to lock in.
-2. ESM2-3B and LoRA fine-tuning of the PLM end-to-end (vs frozen features).
-3. Train on the Tsuboyama/Rocklin mega-scale stability dataset (~800k variants) — the route to
-   >0.7 on a clean benchmark; needs a GPU.
+1. ✅ ESM2-650M, ✅ structure features, ✅ ProteinMPNN — all integrated and measured. Best blind
+   S669 = 0.502 (650M + structure); ProteinMPNN did not improve the blind set on this stack.
+   Feature-stacking has saturated on ~2,600 training mutations.
+2. **Mega-scale data (Tsuboyama/Rocklin, ~800k variants)** — the real next lever: ~300× more data,
+   one clean assay, the route to >0.7 on a clean benchmark. Needs a GPU.
+3. ESM2-3B and LoRA fine-tuning of the PLM end-to-end (vs frozen features).
 4. Extend the anti-symmetric recipe to solubility and expression prediction.
 
 ## Data sources & references (verify against originals)
